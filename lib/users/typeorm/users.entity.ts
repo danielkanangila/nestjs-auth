@@ -1,5 +1,6 @@
 import {
   BeforeInsert,
+  BeforeUpdate,
   Column,
   CreateDateColumn,
   Entity,
@@ -11,8 +12,9 @@ import { Exclude, Expose } from 'class-transformer';
 
 @Entity()
 export class User {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @Expose()
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
   @Column()
   @Index({ unique: true })
@@ -79,8 +81,12 @@ export class User {
     Object.assign(this, partial);
   }
 
+  @BeforeUpdate()
   @BeforeInsert()
   async hashPassword() {
+    if (!this.password) {
+      return;
+    }
     this.password = await bcrypt.hash(this.password, bcrypt.genSaltSync(10));
   }
 }
