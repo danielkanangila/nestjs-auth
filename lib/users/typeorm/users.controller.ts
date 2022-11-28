@@ -7,13 +7,17 @@ import {
     UseInterceptors,
 } from '@nestjs/common';
 import { JwtAuthGuard } from './../../auth/jwt-auth.guard';
+import { UsersService } from './users.service';
 
 @Controller('users')
+@UseInterceptors(ClassSerializerInterceptor)
 export class UsersController {
+    constructor(private readonly usersService: UsersService) {}
+
     @UseGuards(JwtAuthGuard)
-    @UseInterceptors(ClassSerializerInterceptor)
     @Get('profile')
-    getProfile(@Request() req) {
-        return req.user;
+    async getProfile(@Request() req) {
+        const user = await this.usersService.findOne(req.user.userId);
+        return user;
     }
 }

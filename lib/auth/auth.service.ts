@@ -16,13 +16,24 @@ export class AuthService {
         const user = await this.usersService.findByCredentials(username);
         if (user && bcrypt.compareSync(pass, user.password)) {
             const { password, ...result } = user;
+            // update last login
+            await this.usersService.update(user.id, {
+                ...user,
+                dateLastLogin: new Date().toISOString() 
+            });
             return result;
+        } else if (user && !bcrypt.compareSync(pass, user.password)) {
+            // update last login attempt date
+            await this.usersService.update(user.id, {
+                ...user,
+                dateLastLoginAttempt: new Date().toISOString()
+            })
         }
         return null;
     }
 
     async login(user: any) {
-        const payload = { username: user.username, sub: user.userId };
+        const payload = { username: user.username, sub: user.id };
         return {
             access_token: this.jwtService.sign(payload),
             expiresIn: jwtConstants.expiresIn,

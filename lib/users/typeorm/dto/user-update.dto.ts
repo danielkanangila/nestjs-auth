@@ -38,11 +38,15 @@ import {
 
     @IsOptional()
     @IsDateString()
-    dateLastLoginAttempt: Date;
+    dateLastLoginAttempt: string;
 
     @IsOptional()
     @IsDateString()
-    dateLastLogin: Date;
+    dateLastLogin: string;
+
+    @IsOptional()
+    @IsDateString()
+    dateLastActivity: string;
 
     @IsOptional()
     @IsString()

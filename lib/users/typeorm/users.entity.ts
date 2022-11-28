@@ -18,6 +18,7 @@ export class User {
 
   @Column()
   @Index({ unique: true })
+  @Expose()
   username: string;
 
   @Column()
@@ -34,11 +35,15 @@ export class User {
 
   @Expose()
   @Column({ type: 'timestamp', nullable: true })
-  dateLastLoginAttempt: Date;
+  dateLastLoginAttempt: string;
 
   @Expose()
   @Column({ type: 'timestamp', nullable: true })
-  dateLastLogin: Date;
+  dateLastLogin: string;
+
+  @Expose()
+  @Column({ type: 'timestamp', nullable: true })
+  dateLastActivity: string;
 
   @Expose()
   @Index()
@@ -66,10 +71,11 @@ export class User {
   @Column({ default: 'inactive' })
   status: string;
 
+  @Expose()
   @CreateDateColumn()
   createdAt: Date;
 
-  @Exclude()
+  @Expose()
   @CreateDateColumn({
     type: 'timestamp',
     default: () => 'CURRENT_TIMESTAMP(6)',
