@@ -3,10 +3,14 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
 import { JwtService } from '@nestjs/jwt';
-import { CreateUserDto } from 'lib/users/dto';
+import * as DeviceDetector from 'device-detector-js';
+import { CreateUserDto } from './../users/dto';
 import { jwtConstants } from './constants';
 import { UsersService } from './../users/users.service';
 import { AuthToken } from './auth-token.entity';
+import { Request } from 'express';
+import { UserAuthDevices } from './user-auth-devices.entity';
+import { User } from './../users/users.entity';
 
 @Injectable()
 export class AuthService {
@@ -15,6 +19,8 @@ export class AuthService {
     private jwtService: JwtService,
     @InjectRepository(AuthToken)
     private readonly authTokenRepository: Repository<AuthToken>,
+    @InjectRepository(UserAuthDevices)
+    private readonly userAuthDevicesRepository: Repository<UserAuthDevices>,
   ) {}
 
   async validateUser(username: string, pass: string): Promise<any> {
@@ -88,9 +94,62 @@ export class AuthService {
     return authToken ? true : false;
   }
 
-  async extractToken(req: any) {
+  async extractToken(req: Request) {
     if (!req.headers.authorization) return null;
     const token = req.headers.authorization.split(' ')[1];
     return token;
+  }
+
+  async getDeviceInfo(req: Request) {
+    const deviceDetector = new DeviceDetector();
+    const userAgent = req.headers['user-agent'];
+    const deviceInfo = deviceDetector.parse(userAgent);
+    const deviceToken = `${deviceInfo.device.type}-${deviceInfo.device.brand}-${deviceInfo.client.name}-${deviceInfo.os.name}-${req.ip}`;
+    // check if device is already registered
+    const userAuthDevice = await this.userAuthDevicesRepository.findOne({
+      where: { deviceToken },
+    });
+    return {
+      ...deviceInfo,
+      ip: req.ip,
+      deviceToken: deviceToken,
+      userAgent: userAgent,
+      isNewDevice: userAuthDevice ? false : true,
+      revoked: userAuthDevice ? userAuthDevice.revoked : false,
+    };
+  }
+
+  async saveDeviceDetailsIfNew(req: Request) {
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
+    const user = await this.usersService.findOne(req.user.id);
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
+    const deviceInfo: any = req.deviceInfo;
+    // save device details if it's new
+    if (deviceInfo.isNewDevice) {
+      await this.saveDevice(deviceInfo, user);
+    }
+  }
+
+  async saveDevice(deviceInfo: any, user: User) {
+    const userAuthDevice = new UserAuthDevices();
+    userAuthDevice.user = user;
+    userAuthDevice.userAgent = deviceInfo.userAgent;
+    userAuthDevice.deviceToken = deviceInfo.deviceToken;
+    userAuthDevice.deviceType = deviceInfo.device.type;
+    userAuthDevice.deviceBrand = deviceInfo.device.brand;
+    userAuthDevice.deviceModel = deviceInfo.device.model;
+    userAuthDevice.clientName = deviceInfo.client.name;
+    userAuthDevice.clientType = deviceInfo.client.type;
+    userAuthDevice.clientVersion = deviceInfo.client.version;
+    userAuthDevice.clientEngineVersion = deviceInfo.client.engineVersion;
+    userAuthDevice.clientEngine = deviceInfo.client.engine;
+    userAuthDevice.osName = deviceInfo.os.name;
+    userAuthDevice.osVersion = deviceInfo.os.version;
+    userAuthDevice.osPlatform = deviceInfo.os.platform;
+    userAuthDevice.ip = deviceInfo.ip;
+
+    return this.userAuthDevicesRepository.save(userAuthDevice);
   }
 }

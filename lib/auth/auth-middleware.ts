@@ -1,8 +1,12 @@
 /**
  * @file Auth Middleware
- * @description Check if user is logged in
+ * @description
  */
-import { Injectable, NestMiddleware } from '@nestjs/common';
+import {
+  Injectable,
+  NestMiddleware,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { NextFunction, Request, Response } from 'express';
 import { AuthService } from './auth.service';
 
@@ -10,6 +14,17 @@ import { AuthService } from './auth.service';
 export class AuthMiddleware implements NestMiddleware {
   constructor(private readonly authService: AuthService) {}
   async use(req: Request, res: Response, next: NextFunction) {
+    /**
+     * Save device info in the request
+     */
+    const deviceInfo = await this.authService.getDeviceInfo(req);
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore-next-line
+    req.deviceInfo = deviceInfo;
+    console.log('deviceInfo', deviceInfo);
+    /**
+     * Check if user is not logged
+     */
     const { url } = req;
     const excludedUrls = ['/auth/login', '/auth/register'];
     let isExcludedUrl = false;
@@ -21,12 +36,10 @@ export class AuthMiddleware implements NestMiddleware {
     });
 
     if (!isExcludedUrl) {
-      // check if user is not logged in
       const token = await this.authService.extractToken(req);
       const isTokenExists = await this.authService.checkToken(token);
       if (!isTokenExists) {
-        res.status(401).send('Unauthorized');
-        return;
+        throw new UnauthorizedException();
       }
     }
     next();

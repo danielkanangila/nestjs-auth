@@ -5,10 +5,12 @@ import {
   CreateDateColumn,
   Entity,
   Index,
+  OneToMany,
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
 import { Exclude, Expose } from 'class-transformer';
+import { UserAuthDevices } from 'lib/auth/user-auth-devices.entity';
 
 @Entity()
 export class User {
@@ -66,6 +68,10 @@ export class User {
   @Exclude()
   @Column({ nullable: true })
   verificationToken: string;
+
+  @Expose()
+  @OneToMany(() => UserAuthDevices, (userAuthDevices) => userAuthDevices.user)
+  authDevices: UserAuthDevices[];
 
   @Expose()
   @Column({ default: 'inactive' })

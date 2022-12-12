@@ -10,12 +10,6 @@ async function bootstrap() {
     .setTitle('Auth API')
     .setDescription('The Auth API description')
     .setVersion('1.0')
-    .addBearerAuth({
-      name: 'Authorization',
-      type: 'http',
-      scheme: 'Bearer',
-      in: 'header',
-    })
     .addTag('auth')
     .addBearerAuth()
     .build();
