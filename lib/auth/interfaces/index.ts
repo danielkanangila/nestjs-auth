@@ -18,6 +18,12 @@ export interface DataSource {
 export interface NotificationOptions {
   apiPublicKey: string;
   apiSecretKey: string;
+  templates: {
+    verifyEmailTemplate: string;
+    resetPasswordTemplate: string;
+    newDeviceTemplate: string;
+    verifyPhoneTemplate: string;
+  };
 }
 
 export interface MfaOptions {
