@@ -5,11 +5,13 @@ import {
   Index,
   ManyToOne,
   PrimaryGeneratedColumn,
+  Unique,
 } from 'typeorm';
 import { Expose } from 'class-transformer';
 import { User } from './../users/users.entity';
 
 @Entity()
+@Unique('idx_unq_uid_dtoken', ['deviceToken', 'user.id'])
 export class UserAuthDevices {
   @Expose()
   @PrimaryGeneratedColumn('uuid')
@@ -24,8 +26,8 @@ export class UserAuthDevices {
   userAgent: string;
 
   @Expose()
-  @Index({ unique: true })
-  @Column({ type: 'text' })
+  @Index()
+  @Column({ type: 'text', name: 'deviceToken' })
   deviceToken: string;
 
   @Expose()
@@ -78,14 +80,21 @@ export class UserAuthDevices {
 
   @Expose()
   @Column({ type: 'boolean', default: false })
-  revoked: boolean;
+  isRevoked: boolean;
 
   @Expose()
   @Column({ default: 'active' })
+  @Index()
   status: string;
 
   @Expose()
+  @Column({ type: 'timestamp', nullable: true })
+  @Index()
+  dateLastLogin: Date;
+
+  @Expose()
   @CreateDateColumn()
+  @Index()
   createdAt: Date;
 
   @Expose()

@@ -26,7 +26,10 @@ export class UsersService {
   }
 
   async findOne(id: string): Promise<User | undefined> {
-    return this.usersRepository.findOne({ where: { id } });
+    return this.usersRepository.findOne({
+      where: { id },
+      relations: ['authDevices'],
+    });
   }
 
   async findByCredentials(username: string): Promise<User> {
@@ -55,5 +58,9 @@ export class UsersService {
       messages.push('This phone number is already registered.');
 
     return messages.length ? messages : null;
+  }
+
+  async validateUserEmail(email: string): Promise<User> {
+    return this.usersRepository.findOne({ where: { email } });
   }
 }

@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
@@ -46,6 +50,7 @@ export class AuthService {
   async login(user: any) {
     const payload = { username: user.username, sub: user.id };
     const accessToken = this.jwtService.sign(payload);
+    // save access token
     await this.saveToken(accessToken, user.id);
     return {
       access_token: accessToken,
@@ -104,50 +109,66 @@ export class AuthService {
     const deviceDetector = new DeviceDetector();
     const userAgent = req.headers['user-agent'];
     const deviceInfo = deviceDetector.parse(userAgent);
-    const deviceToken = `${deviceInfo.device.type}-${deviceInfo.device.brand}-${deviceInfo.client.name}-${deviceInfo.os.name}-${req.ip}`;
-    // check if device is already registered
-    const userAuthDevice = await this.userAuthDevicesRepository.findOne({
-      where: { deviceToken },
-    });
+    let deviceToken = '';
+    if (deviceInfo.device && deviceInfo.os) {
+      deviceToken = `${deviceInfo.device.type}-${deviceInfo.device.brand}-${deviceInfo.client.name}-${deviceInfo.os.name}-${req.ip}`;
+    } else {
+      deviceToken = `${deviceInfo.client.name}-${deviceInfo.client.type}-${req.ip}`;
+    }
+
     return {
       ...deviceInfo,
       ip: req.ip,
       deviceToken: deviceToken,
       userAgent: userAgent,
-      isNewDevice: userAuthDevice ? false : true,
-      revoked: userAuthDevice ? userAuthDevice.revoked : false,
     };
   }
 
-  async saveDeviceDetailsIfNew(req: Request) {
+  async validateDevice(req: Request) {
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
     const user = await this.usersService.findOne(req.user.id);
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
     const deviceInfo: any = req.deviceInfo;
+    // check if device is new
+    const userAuthDevice = user.authDevices.find(
+      (device) => device.deviceToken === deviceInfo.deviceToken,
+    );
     // save device details if it's new
-    if (deviceInfo.isNewDevice) {
-      await this.saveDevice(deviceInfo, user);
+    if (!userAuthDevice) {
+      await this.saveUserDevice(deviceInfo, user);
+    } else {
+      // update last login datetime
+      await this.userAuthDevicesRepository.update(userAuthDevice.id, {
+        dateLastLogin: new Date().toISOString(),
+      });
+    }
+    // if the device is revoked, throw unauthorized error
+    if (
+      userAuthDevice &&
+      (userAuthDevice.isRevoked || userAuthDevice.status !== 'active')
+    ) {
+      throw new UnauthorizedException('Device is revoked');
     }
   }
 
-  async saveDevice(deviceInfo: any, user: User) {
+  async saveUserDevice(deviceInfo: any, user: User) {
     const userAuthDevice = new UserAuthDevices();
     userAuthDevice.user = user;
     userAuthDevice.userAgent = deviceInfo.userAgent;
     userAuthDevice.deviceToken = deviceInfo.deviceToken;
-    userAuthDevice.deviceType = deviceInfo.device.type;
-    userAuthDevice.deviceBrand = deviceInfo.device.brand;
-    userAuthDevice.deviceModel = deviceInfo.device.model;
+    userAuthDevice.deviceType = deviceInfo.device?.type;
+    userAuthDevice.deviceBrand = deviceInfo.device?.brand;
+    userAuthDevice.deviceModel = deviceInfo.device?.model;
     userAuthDevice.clientName = deviceInfo.client.name;
     userAuthDevice.clientType = deviceInfo.client.type;
     userAuthDevice.clientVersion = deviceInfo.client.version;
     userAuthDevice.clientEngineVersion = deviceInfo.client.engineVersion;
     userAuthDevice.clientEngine = deviceInfo.client.engine;
-    userAuthDevice.osName = deviceInfo.os.name;
-    userAuthDevice.osVersion = deviceInfo.os.version;
-    userAuthDevice.osPlatform = deviceInfo.os.platform;
+    userAuthDevice.osName = deviceInfo.os?.name;
+    userAuthDevice.osVersion = deviceInfo.os?.version;
+    userAuthDevice.osPlatform = deviceInfo.os?.platform;
     userAuthDevice.ip = deviceInfo.ip;
 
     return this.userAuthDevicesRepository.save(userAuthDevice);

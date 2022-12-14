@@ -55,6 +55,8 @@ export class AuthController {
     },
   })
   async login(@Request() req) {
+    // save user device
+    await this.authService.validateDevice(req);
     return await this.authService.login(req.user);
   }
 

@@ -21,7 +21,6 @@ export class AuthMiddleware implements NestMiddleware {
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore-next-line
     req.deviceInfo = deviceInfo;
-    console.log('deviceInfo', deviceInfo);
     /**
      * Check if user is not logged
      */

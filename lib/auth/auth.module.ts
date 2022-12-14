@@ -19,13 +19,14 @@ import { User } from './../users/users.entity';
 import { UserAuditMiddleware } from 'lib/users/users-audit.middleware';
 import { AuthModuleConfig } from './interfaces';
 import { AuthMiddleware } from './auth-middleware';
+import { UserAuthDevices } from './user-auth-devices.entity';
 
 @Module({})
 export class AuthModule implements NestModule {
   static register(config: AuthModuleConfig): DynamicModule {
     const dataSource = {
       ...config.dataSource,
-      entities: [User, AuthToken],
+      entities: [User, AuthToken, UserAuthDevices],
       synchronize: true,
     } as TypeOrmModuleOptions;
 
@@ -39,10 +40,18 @@ export class AuthModule implements NestModule {
           signOptions: { expiresIn: jwtConstants.expiresIn },
         }),
         TypeOrmModule.forRoot(dataSource),
-        TypeOrmModule.forFeature([AuthToken]),
+        TypeOrmModule.forFeature([AuthToken, UserAuthDevices]),
       ],
       controllers: [AuthController],
-      providers: [AuthService, LocalStrategy, JwtStrategy],
+      providers: [
+        AuthService,
+        LocalStrategy,
+        JwtStrategy,
+        {
+          provide: 'AUTH_MODULE_CONFIG',
+          useValue: config,
+        },
+      ],
     };
   }
   configure(consumer: MiddlewareConsumer) {
